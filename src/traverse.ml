@@ -118,7 +118,8 @@ module Applicative = struct
   end
 
   let reduce (type m) (monoid : m Monoid.t) =
-    let module M = Make (Reduce (val monoid)) in
+    let module Monoid = (val monoid) in
+    let module M = Make (Reduce (Monoid)) in
     M.instance
 
   module Env (E : TypeS) (Base : S) : S
