@@ -125,6 +125,10 @@ module Applicative : sig
 
   val result : ('a, 'b, 'c, 'd) t ->
     ('a, ('b, 'e) result, 'c, ('d, 'e) result) t
+
+  module List (Base : S) : S with type 'a t = 'a Base.t list
+
+  val list : ('a, 'b, 'c, 'd) t -> ('a, 'b list, 'c, 'd list) t
 end
 
 (** Traversal for lists. *)
