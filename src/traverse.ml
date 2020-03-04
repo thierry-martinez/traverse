@@ -4,6 +4,10 @@ module type TypeS = sig
   type t
 end
 
+module type UnaryTypeS = sig
+  type 'a t
+end
+
 module Monoid = struct
   module type S = sig
     type t
@@ -298,39 +302,133 @@ module Applicative = struct
     M.instance
 end
 
-module List (Applicative : Applicative.S) = struct
-  open Applicative
-
-  let rec traverse (f : 'a -> 'b t) (a : 'a list) : 'b list t =
-    match a with
-    | [] -> pure []
-    | hd :: tl ->
-        apply (map List.cons (f hd)) (fun () -> traverse f tl)
+module Arity (T : UnaryTypeS) = struct
+  type ('a, 'a_t, 'f, 'result, 'is_empty) t =
+    | O : ('a, 'a_t, 'a, 'a_t, [`Empty]) t
+    | S : ('a, 'a_t, 'f, 'result, _) t ->
+        ('a, 'a_t, 'x -> 'f, 'x T.t -> 'result, [`Not_empty]) t
 end
 
-let list (type a b b_list c) (app : (a, b, a list, b_list) Applicative.t)
-  (f : c -> b) (l : c list) : b_list =
-  let module M = (val (app ())) in
-  let Eq = M.eq_a in
-  let Eq = M.eq_b in
-  let module Traverse = List (M.Applicative) in
-  Traverse.traverse f l
+module type SequenceSpecS = sig
+  type 'a t
 
-module Seq (Applicative : Applicative.S) = struct
-  open Applicative
+  type 'a desc =
+    | Nil
+    | Cons of 'a * 'a t
 
-  let rec traverse (f : 'a -> 'b t) (a : 'a Seq.t) : 'b Seq.t t =
-    match a () with
-    | Nil -> pure Seq.empty
-    | Cons (hd, tl) ->
-        apply (map (fun hd tl () -> Seq.Cons (hd, tl)) (f hd))
-          (fun () -> traverse f tl)
+  val destruct : 'a t -> 'a desc
+
+  val construct : 'a desc -> 'a t
 end
 
-let seq (type a b b_seq c) (app : (a, b, a Stdlib.Seq.t, b_seq) Applicative.t)
-  (f : c -> b) (seq : c Stdlib.Seq.t) : b_seq =
-  let module M = (val (app ())) in
-  let Eq = M.eq_a in
-  let Eq = M.eq_b in
-  let module Traverse = Seq (M.Applicative) in
-  Traverse.traverse f seq
+module type SequenceS = sig
+  type 'a s
+
+  module Arity : sig
+    type ('a, 'a_t, 'f, 'result, 'is_empty) t =
+      | O : ('a, 'a_t, 'a, 'a_t, [`Empty]) t
+      | S : ('a, 'a_t, 'f, 'result, _) t ->
+          ('a, 'a_t, 'x -> 'f, 'x s -> 'result, [`Not_empty]) t
+  end
+
+  module Make (Applicative : Applicative.S) : sig
+    val traverse :
+        ('a Applicative.t, 'a s Applicative.t, 'f, 'result,
+         [`Not_empty]) Arity.t -> 'f -> 'result
+  end
+
+  val traverse :
+    ('a, 'b, 'a s, 'b_seq) Applicative.t ->
+    ('b, 'b_seq, 'f, 'result, [`Not_empty]) Arity.t ->
+    'f -> 'result
+end
+
+module Sequence (S : SequenceSpecS) : SequenceS with type 'a s = 'a S.t = struct
+  type 'a s = 'a S.t
+
+  module Arity = Arity (S)
+
+  let cons hd tl =
+    S.construct (Cons (hd, tl))
+
+  module Make (Applicative : Applicative.S) = struct
+    open Applicative
+
+    let rec traverse : type a f result .
+          (a Applicative.t, a S.t Applicative.t, f, result,
+            [`Not_empty]) Arity.t -> f -> result =
+    fun arity f ->
+      let rec empty : type a f result w .
+        (a Applicative.t, a S.t Applicative.t, f, result, w) Arity.t ->
+          result =
+      fun arity ->
+        match arity with
+        | O -> pure (S.construct Nil)
+        | S arity' ->
+            fun l ->
+              match S.destruct l with
+              | Nil -> empty arity'
+              | Cons _ -> invalid_arg "traverse" in
+      let rec non_empty : type a f result w .
+        (a Applicative.t, a S.t Applicative.t, f, result, w) Arity.t -> f ->
+          (unit -> result) -> result =
+      fun arity f k ->
+        match arity with
+        | O -> apply (map cons f) k
+        | S arity ->
+            fun l ->
+              match S.destruct l with
+              | Nil -> invalid_arg "traverse"
+              | Cons (hd, tl) ->
+                  non_empty arity (f hd) (fun () -> k () tl) in
+      let S arity' = arity in
+      fun a ->
+      match S.destruct a with
+      | Nil -> empty arity'
+      | Cons (hd, tl) -> non_empty arity' (f hd) (fun () -> traverse arity f tl)
+  end
+
+  let traverse (type a b b_seq f result)
+    (app : (a, b, a S.t, b_seq) Applicative.t)
+    (arity : (b, b_seq, f, result, [`Not_empty]) Arity.t)
+    (f : f) : result =
+    let module M = (val (app ())) in
+    let Eq = M.eq_a in
+    let Eq = M.eq_b in
+    let module Traverse = Make (M.Applicative) in
+    Traverse.traverse arity f
+end
+
+module List = Sequence (struct
+  type 'a t = 'a list
+
+  type 'a desc =
+    | Nil
+    | Cons of 'a * 'a t
+
+  let destruct l =
+    match l with
+    | [] -> Nil
+    | hd :: tl -> Cons (hd, tl)
+
+  let construct d =
+    match d with
+    | Nil -> []
+    | Cons (hd, tl) -> hd :: tl
+end)
+
+let list = List.traverse
+
+module Seq = Sequence (struct
+  type 'a t = 'a Seq.t
+
+  type 'a desc = 'a Seq.node =
+    | Nil
+    | Cons of 'a * 'a t
+
+  let destruct l = l ()
+
+  let construct d () = d
+end)
+
+let seq = Seq.traverse

@@ -131,18 +131,55 @@ module Applicative : sig
   val list : ('a, 'b, 'c, 'd) t -> ('a, 'b list, 'c, 'd list) t
 end
 
-(** Traversal for lists. *)
-module List (Applicative : Applicative.S) : sig
-  val traverse : ('a -> 'b Applicative.t) -> 'a list -> 'b list Applicative.t
+(** Traversal for abstract sequences. *)
+module type SequenceSpecS = sig
+  type 'a t
+
+  type 'a desc =
+    | Nil
+    | Cons of 'a * 'a t
+
+  val destruct : 'a t -> 'a desc
+
+  val construct : 'a desc -> 'a t
 end
 
-val list : ('a, 'b, 'a list, 'd) Applicative.t -> ('c -> 'b) -> 'c list -> 'd
+module type SequenceS = sig
+  type 'a s
+
+  module Arity : sig
+    type ('a, 'a_t, 'f, 'result, 'is_empty) t =
+      | O : ('a, 'a_t, 'a, 'a_t, [`Empty]) t
+      | S : ('a, 'a_t, 'f, 'result, _) t ->
+          ('a, 'a_t, 'x -> 'f, 'x s -> 'result, [`Not_empty]) t
+  end
+
+  module Make (Applicative : Applicative.S) : sig
+    val traverse :
+        ('a Applicative.t, 'a s Applicative.t, 'f, 'result,
+         [`Not_empty]) Arity.t -> 'f -> 'result
+  end
+
+  val traverse :
+    ('a, 'b, 'a s, 'b_seq) Applicative.t ->
+    ('b, 'b_seq, 'f, 'result, [`Not_empty]) Arity.t ->
+    'f -> 'result
+end
+
+module Sequence (Spec : SequenceSpecS) : SequenceS with type 'a s = 'a Spec.t
+
+(** Traversal for lists. *)
+module List : SequenceS with type 'a s = 'a list
+
+val list :
+    ('a, 'b, 'a list, 'b_seq) Applicative.t ->
+    ('b, 'b_seq, 'f, 'result, [`Not_empty]) List.Arity.t ->
+    'f -> 'result
 
 (** Traversal for sequences. *)
-module Seq (Applicative : Applicative.S) : sig
-  val traverse : ('a -> 'b Applicative.t) -> 'a Seq.t -> 'b Seq.t Applicative.t
-end
+module Seq : SequenceS with type 'a s = 'a Seq.t
 
 val seq :
-    ('a, 'b, 'a Stdlib.Seq.t, 'd) Applicative.t -> ('c -> 'b) ->
-      'c Stdlib.Seq.t -> 'd
+    ('a, 'b, 'a Stdlib.Seq.t, 'b_seq) Applicative.t ->
+    ('b, 'b_seq, 'f, 'result, [`Not_empty]) Seq.Arity.t ->
+    'f -> 'result
