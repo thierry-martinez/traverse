@@ -363,8 +363,8 @@ module Sequence (S : SequenceSpecS) : SequenceS with type 'a s = 'a S.t = struct
           result =
       fun arity ->
         match arity with
-        | O -> pure (S.construct Nil)
-        | S arity' ->
+        | Arity.O -> pure (S.construct Nil)
+        | Arity.S arity' ->
             fun l ->
               match S.destruct l with
               | Nil -> empty arity'
@@ -374,14 +374,14 @@ module Sequence (S : SequenceSpecS) : SequenceS with type 'a s = 'a S.t = struct
           (unit -> result) -> result =
       fun arity f k ->
         match arity with
-        | O -> apply (map cons f) k
-        | S arity ->
+        | Arity.O -> apply (map cons f) k
+        | Arity.S arity ->
             fun l ->
               match S.destruct l with
               | Nil -> invalid_arg "traverse"
               | Cons (hd, tl) ->
                   non_empty arity (f hd) (fun () -> k () tl) in
-      let S arity' = arity in
+      let Arity.S arity' = arity in
       fun a ->
       match S.destruct a with
       | Nil -> empty arity'
