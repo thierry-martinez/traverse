@@ -14,9 +14,10 @@
 (package
  (name traverse)
  (synopsis "Traversable data structures with applicative functors")
- (description "Definition of applicative functors with instances for traversable data structures")
+ (description
+   "Definition of applicative functors with instances for traversable
+    data structures")
  (depends
   (ocaml (and (>= 4.03.0) (< 4.11.0)))
   (dune (>= 1.10.0))
-  (stdcompat (>= 9))
-  (metapp (>= 0.1.0))))
+  (stdcompat (>= 9))))
