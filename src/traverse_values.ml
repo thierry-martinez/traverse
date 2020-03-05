@@ -1,5 +1,6 @@
 [%%metapackage metapp]
 [%%metadir "meta/.traverse_meta.objs/byte/"]
+[%%metaflag "-open", "Stdcompat"]
 
 let variable_count = [%meta Metapp.Exp.of_int Traverse_meta.variable_count]
 
@@ -60,7 +61,8 @@ module Applicative = struct
         (Traverse_meta.type_of_string (Traverse_meta.ti i),
           Traverse_meta.type_of_string (tim i)))]) ->
         let A m = m () in
-        [%meta Ast_helper.Exp.letmodule (Metapp.mkloc (Some modname))
+        [%meta Ast_helper.Exp.letmodule
+          (Metapp.mkloc (Traverse_meta.module_name_of_string modname))
           (Ast_helper.Mod.unpack [%expr m])
           (Traverse_meta.compose (fun i acc ->
             [%expr let Eq = [%meta Ast_helper.Exp.ident (Metapp.mkloc
@@ -144,10 +146,10 @@ let list (type a b b_seq f result tail)
   (app : (a * b * (a list * b_seq * tail)) Applicative.t)
   (arity : (b, b_seq, f, result, [`Not_empty]) Traverse_modules.List.Arity.t)
   (f : f) : result =
-  let A app = app () in
+  let Applicative.A app = app () in
   let module M = (val app) in
-  let Eq = M.eq0 in
-  let Eq = M.eq1 in
+  let Traverse_interface.Eq = M.eq0 in
+  let Traverse_interface.Eq = M.eq1 in
   let module Traverse = Traverse_modules.List.Make (M.Applicative) in
   Traverse.traverse arity f
 
@@ -155,9 +157,9 @@ let seq (type a b b_seq f result tail)
   (app : (a * b * (a Seq.t * b_seq * tail)) Applicative.t)
   (arity : (b, b_seq, f, result, [`Not_empty]) Traverse_modules.Seq.Arity.t)
   (f : f) : result =
-  let A app = app () in
+  let Applicative.A app = app () in
   let module M = (val app) in
-  let Eq = M.eq0 in
-  let Eq = M.eq1 in
+  let Traverse_interface.Eq = M.eq0 in
+  let Traverse_interface.Eq = M.eq1 in
   let module Traverse = Traverse_modules.Seq.Make (M.Applicative) in
   Traverse.traverse arity f

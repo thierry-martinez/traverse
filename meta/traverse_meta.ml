@@ -25,10 +25,16 @@ let mk_t f =
 
 let newtypes f expr =
   compose (fun i acc ->
-    Ast_helper.Exp.newtype (Metapp.mkloc (f i)) acc) expr
+    Metapp.Exp.newtype (Metapp.mkloc (f i)) acc) expr
 
 let ti i = Printf.sprintf "t%d" i
 
 let ti_t i = Printf.sprintf "t%d_t" i
 
 let eqi i = Printf.sprintf "eq%d" i
+
+let module_name_of_string name =
+  [%meta if Sys.ocaml_version >= "4.10.0" then
+    [%e Some name]
+  else
+    [%e name]]

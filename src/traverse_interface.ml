@@ -1,5 +1,6 @@
 [%%metapackage metapp]
 [%%metadir "meta/.traverse_meta.objs/byte/"]
+[%%metaflag "-open", "Stdcompat"]
 
 type ('a, 'b) eq = Eq : ('a, 'a) eq
 (** Equality witness between types. *)
