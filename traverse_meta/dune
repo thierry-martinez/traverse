@@ -1,6 +1,6 @@
 (library
   (name traverse_meta)
-  (public_name traverse.meta)
+  (public_name traverse.traverse_meta)
 ; +warning 32: Unused value declaration.
 ; +warning 34: Unused type declaration.
 ; -warning 40: Constructor or label name used out of scope. (OCaml <=4.06.0)
