@@ -2,8 +2,6 @@
 [%%metadir "meta/.traverse_meta.objs/byte/"]
 [%%metaflag "-open", "Stdcompat"]
 
-let variable_count = [%meta Metapp.Exp.of_int Traverse_meta.variable_count]
-
 module Applicative = struct
   include Traverse_interface
 
