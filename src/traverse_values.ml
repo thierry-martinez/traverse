@@ -1,5 +1,5 @@
 [%%metapackage metapp]
-[%%metadir "meta/.traverse_meta.objs/byte/"]
+[%%metadir "traverse_meta/.traverse_meta.objs/byte/"]
 [%%metaflag "-open", "Stdcompat"]
 
 module Applicative = struct
