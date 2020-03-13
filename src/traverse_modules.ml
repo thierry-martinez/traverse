@@ -38,7 +38,7 @@ module Applicative = struct
 
     let pure _x = ()
 
-    let apply _f _ = ()
+    let apply _f x = x ()
   end
 
   module Map : S with type 'a t = 'a = struct
