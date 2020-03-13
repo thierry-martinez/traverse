@@ -42,9 +42,9 @@ module Applicative : sig
     val pure : 'a -> 'a t
 
     val apply : ('a -> 'b) t -> (unit -> 'a t) -> 'b t
-    (** The second argument is delayed for its evaluation to be skipped
-        if not necessary: it allows short-circuits with {!val:forall},
-        {!val:exists}, etc. *)
+    (** The evaluation of the second argument is delayed so that it
+        can be skipped if not necessary: it allows short-circuits with
+        {!val:forall}, {!val:exists}, etc. *)
   end
 
   module Iter : S with type 'a t = unit
