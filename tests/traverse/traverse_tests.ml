@@ -1,5 +1,5 @@
+(*
 open Traverse
-
 let () =
   assert (list Applicative.(option map) (S O)
     (fun x -> Some (x + 1)) [1; 2; 3] = Some [2; 3; 4])
@@ -16,3 +16,4 @@ let () =
         (fun () -> false);
         (fun () -> flag := 2; true)] = None);
   assert (!flag = 1)
+*)

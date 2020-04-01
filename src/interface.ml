@@ -6,7 +6,7 @@ type ('a, 'b) eq = Eq : ('a, 'a) eq
 (** Equality witness between types. *)
 
 module type MonomorphicS = sig
-  module Applicative : Traverse_modules.Applicative.S
+  module Applicative : Modules.Applicative.S
 
   [%%meta Metapp.Sigi.of_list (List.init Traverse_meta.variable_count
     (fun i ->
@@ -41,7 +41,7 @@ type 'a desc =
 type 'a t = unit -> 'a desc
 
 module type InstanceS = sig
-  module Applicative : Traverse_modules.Applicative.S
+  module Applicative : Modules.Applicative.S
 
   val instance :
     [%meta Traverse_meta.mk_t (fun i ->

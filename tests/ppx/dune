@@ -1,0 +1,5 @@
+(test
+  (name ppx_tests)
+  (preprocess (pps traverse.ppx))
+  (flags -dsource)
+  (libraries traverse))

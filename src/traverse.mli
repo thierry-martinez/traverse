@@ -1,8 +1,8 @@
 (** Modular interface. *)
-module Modules = Traverse_modules
+module Modules = Modules
 
 (** First-class module interface. *)
-module Values = Traverse_values
+module Values = Values
 
 include (
   module type of struct include Modules end with
@@ -17,3 +17,5 @@ module Applicative : sig
 
   include module type of Values.Applicative
 end
+
+module Primitives = Primitives

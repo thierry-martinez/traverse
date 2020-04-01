@@ -3,9 +3,9 @@
 [%%metaflag "-open", "Stdcompat"]
 
 module Applicative = struct
-  include Traverse_interface
+  include Interface
 
-  module Make (Applicative : Traverse_modules.Applicative.S) : InstanceS
+  module Make (Applicative : Modules.Applicative.S) : InstanceS
   with module Applicative = Applicative = struct
     module Applicative = Applicative
 
@@ -39,16 +39,16 @@ module Applicative = struct
   end
 
   let iter () =
-    let module M = Make (Traverse_modules.Applicative.Iter) in
+    let module M = Make (Modules.Applicative.Iter) in
     M.instance ()
 
   let map () =
-    let module M = Make (Traverse_modules.Applicative.Map) in
+    let module M = Make (Modules.Applicative.Map) in
     M.instance ()
 
-  let reduce (type m) (monoid : m Traverse_modules.Monoid.t) =
+  let reduce (type m) (monoid : m Modules.Monoid.t) =
     let module Monoid = (val monoid) in
-    let module M = Make (Traverse_modules.Applicative.Reduce (Monoid)) in
+    let module M = Make (Modules.Applicative.Reduce (Monoid)) in
     M.instance
 
   [%%metadef
@@ -75,7 +75,7 @@ module Applicative = struct
           type t = env
         end in
         let module M =
-          Make (Traverse_modules.Applicative.Env (E) (Base.Applicative)) in
+          Make (Modules.Applicative.Env (E) (Base.Applicative)) in
         (M.instance :
           [%meta Traverse_meta.mk_t (fun i ->
             (Traverse_meta.type_of_string (Traverse_meta.ti i), [%type: env ->
@@ -85,14 +85,14 @@ module Applicative = struct
     let module Accu = struct
       type t = acc
     end in
-    let module M = Make (Traverse_modules.Applicative.Fold (Accu)) in
+    let module M = Make (Modules.Applicative.Fold (Accu)) in
     M.instance ()
 
   let pair =
     [%meta Traverse_meta.newtypes Traverse_meta.ti
       (param "U" (fun tiu -> param "V" (fun tiv -> [%expr
         let module M =
-          Make (Traverse_modules.Applicative.Pair
+          Make (Modules.Applicative.Pair
             (U.Applicative) (V.Applicative)) in
         (M.instance : [%meta Traverse_meta.mk_t (fun i ->
           (Traverse_meta.type_of_string (Traverse_meta.ti i),
@@ -101,17 +101,17 @@ module Applicative = struct
                [%meta Traverse_meta.type_of_string (tiv i)]]))])])))]
 
   let forall () =
-    let module M = Make (Traverse_modules.Applicative.Forall) in
+    let module M = Make (Modules.Applicative.Forall) in
     M.instance ()
 
   let exists () =
-    let module M = Make (Traverse_modules.Applicative.Exists) in
+    let module M = Make (Modules.Applicative.Exists) in
     M.instance ()
 
   let option = [%meta Traverse_meta.newtypes Traverse_meta.ti (param "Base"
     (fun tib -> [%expr
       let module M =
-        Make (Traverse_modules.Applicative.Option (Base.Applicative)) in
+        Make (Modules.Applicative.Option (Base.Applicative)) in
       (M.instance : [%meta Traverse_meta.mk_t (fun i ->
         (Traverse_meta.type_of_string (Traverse_meta.ti i),
         [%type: [%meta Traverse_meta.type_of_string (tib i)] option]))])]))]
@@ -123,7 +123,7 @@ module Applicative = struct
           type t = err
         end in
         let module M =
-          Make (Traverse_modules.Applicative.Result (Base.Applicative) (Err)) in
+          Make (Modules.Applicative.Result (Base.Applicative) (Err)) in
         (M.instance :
           [%meta Traverse_meta.mk_t (fun i ->
             (Traverse_meta.type_of_string (Traverse_meta.ti i), [%type:
@@ -134,30 +134,8 @@ module Applicative = struct
     [%meta Traverse_meta.newtypes Traverse_meta.ti (param "Base"
       (fun tib -> [%expr
         let module M =
-          Make (Traverse_modules.Applicative.List (Base.Applicative)) in
+          Make (Modules.Applicative.List (Base.Applicative)) in
         (M.instance : [%meta Traverse_meta.mk_t (fun i ->
           (Traverse_meta.type_of_string (Traverse_meta.ti i),
           [%type: [%meta Traverse_meta.type_of_string (tib i)] list]))])]))]
 end
-
-let list (type a b b_seq f result tail)
-  (app : (a * b * (a list * b_seq * tail)) Applicative.t)
-  (arity : (b, b_seq, f, result, [`Not_empty]) Traverse_modules.List.Arity.t)
-  (f : f) : result =
-  let Applicative.A app = app () in
-  let module M = (val app) in
-  let Traverse_interface.Eq = M.eq0 in
-  let Traverse_interface.Eq = M.eq1 in
-  let module Traverse = Traverse_modules.List.Make (M.Applicative) in
-  Traverse.traverse arity f
-
-let seq (type a b b_seq f result tail)
-  (app : (a * b * (a Seq.t * b_seq * tail)) Applicative.t)
-  (arity : (b, b_seq, f, result, [`Not_empty]) Traverse_modules.Seq.Arity.t)
-  (f : f) : result =
-  let Applicative.A app = app () in
-  let module M = (val app) in
-  let Traverse_interface.Eq = M.eq0 in
-  let Traverse_interface.Eq = M.eq1 in
-  let module Traverse = Traverse_modules.Seq.Make (M.Applicative) in
-  Traverse.traverse arity f

@@ -11,6 +11,14 @@ module Monoid = struct
     val ( + ) : t -> t -> t
   end
 
+  module Addition = struct
+    type t = int
+
+    let zero = 0
+
+    let ( + ) = ( + )
+  end
+
   type 'a t = (module S with type t = 'a)
 end
 
@@ -178,118 +186,110 @@ module Applicative = struct
   end
 end
 
-module type UnaryTypeS = sig
-  type 'a t
+type ('a, 'b) length =
+  | Zero : (unit, unit) length
+  | Succ : ('a, 'b) length -> (_ * 'a, _ * 'b) length
+
+module type SequenceOfUnaryTypeS = sig
+  type 'item x
+
+  type 'sequence t =
+    | Unit : unit t
+    | Cons : 'hd x * 'tl t -> ('hd * 'tl) t
 end
 
-module Arity (T : UnaryTypeS) = struct
-  type ('a, 'a_t, 'f, 'result, 'is_empty) t =
-    | O : ('a, 'a_t, 'a, 'a_t, [`Empty]) t
-    | S : ('a, 'a_t, 'f, 'result, _) t ->
-        ('a, 'a_t, 'x -> 'f, 'x T.t -> 'result, [`Not_empty]) t
+module rec Sequence : SequenceOfUnaryTypeS with type 'a x = 'a = Sequence
+
+module type SequenceOfBinaryTypeS = sig
+  type ('a, 'b) x
+
+  type ('a_s, 'b_s) t =
+    | Unit : (unit, unit) t
+    | Cons : ('a, 'b) x * ('a_s, 'b_s) t -> ('a * 'a_s, 'b * 'b_s) t
 end
 
-module type SequenceSpecS = sig
-  type 'a t
+module Arity = struct
+  module type S = sig
+    type ('a, 'b) t
 
-  type 'a desc =
-    | Nil
-    | Cons of 'a * 'a t
+    module ArrowSequence : SequenceOfBinaryTypeS with
+    type ('a, 'b) x = ('a, 'b) t -> 'b
 
-  val destruct : 'a t -> 'a desc
-
-  val construct : 'a desc -> 'a t
-end
-
-module type SequenceS = sig
-  type 'a s
-
-  module Arity : sig
-    type ('a, 'a_t, 'f, 'result, 'is_empty) t =
-      | O : ('a, 'a_t, 'a, 'a_t, [`Empty]) t
-      | S : ('a, 'a_t, 'f, 'result, _) t ->
-          ('a, 'a_t, 'x -> 'f, 'x s -> 'result, [`Not_empty]) t
+    val destruct :
+        ('a, 'b) length ->
+        ('c -> 'a Sequence.t) ->
+        (('a, 'b) ArrowSequence.t -> 'd) ->
+        ('c, 'd) t
   end
 
-  module Make (Applicative : Applicative.S) : sig
-    val traverse :
-        ('a Applicative.t, 'a s Applicative.t, 'f, 'result,
-         [`Not_empty]) Arity.t -> 'f -> 'result
+  module type NonNullS = sig
+    module Pred : S
+
+    include S with type ('a, 'b) t = 'a -> ('a, 'b) Pred.t
   end
+
+  module O : S with type ('a, 'b) t = 'b = struct
+    type ('a, 'b) t = 'b
+
+    module rec ArrowSequence : SequenceOfBinaryTypeS with
+    type ('a, 'b) x = ('a, 'b) t -> 'b = ArrowSequence
+
+    let rec id_arrow_sequence :
+      type a b . (a, b) length -> (a, b) ArrowSequence.t =
+    fun l ->
+      match l with
+      | Zero -> Unit
+      | Succ l' ->
+          Cons (Fun.id, id_arrow_sequence l')
+
+    let destruct l _p k =
+      k (id_arrow_sequence l)
+  end
+
+  module S (Pred : S) : NonNullS with module Pred = Pred = struct
+    module Pred = Pred
+
+    type ('a, 'b) t = 'a -> ('a, 'b) Pred.t
+
+    module rec ArrowSequence : SequenceOfBinaryTypeS with
+    type ('a, 'b) x = ('a, 'b) t -> 'b = ArrowSequence
+
+    let rec cons_arrow_sequence :
+      type a b .
+      a Sequence.t ->
+      ((a, b) ArrowSequence.t -> 'c) ->
+      (a, b) Pred.ArrowSequence.t -> 'c =
+    fun s k a ->
+      match s, a with
+      | Unit, Unit -> k Unit
+      | Cons (hd, tl), Cons (hd', tl') ->
+          cons_arrow_sequence tl
+            (fun s -> k (Cons ((fun f -> hd' (f hd)), s))) tl'
+
+    let destruct (l : ('a, 'b) length)
+        (p : ('c -> 'a Sequence.t))
+        (k : (('a, 'b) ArrowSequence.t -> 'd))
+        (x : 'c) : ('c, 'd) Pred.t =
+      Pred.destruct l p (cons_arrow_sequence (p x) k)
+  end
+
+  module A1 = S (O)
+
+  module A2 = S (A1)
+
+  module A3 = S (A2)
+
+  module A4 = S (A3)
+
+  module A5 = S (A4)
+
+  module A6 = S (A5)
+
+  module A7 = S (A6)
+
+  module A8 = S (A7)
+
+  module A9 = S (A8)
 end
 
-module Sequence (S : SequenceSpecS) : SequenceS with type 'a s = 'a S.t = struct
-  type 'a s = 'a S.t
-
-  module Arity = Arity (S)
-
-  let cons hd tl =
-    S.construct (Cons (hd, tl))
-
-  module Make (Applicative : Applicative.S) = struct
-    open Applicative
-
-    let rec traverse : type a f result .
-          (a Applicative.t, a S.t Applicative.t, f, result,
-            [`Not_empty]) Arity.t -> f -> result =
-    fun arity f ->
-      let rec empty : type a f result w .
-        (a Applicative.t, a S.t Applicative.t, f, result, w) Arity.t ->
-          result =
-      fun arity ->
-        match arity with
-        | Arity.O -> pure (S.construct Nil)
-        | Arity.S arity' ->
-            fun l ->
-              match S.destruct l with
-              | Nil -> empty arity'
-              | Cons _ -> invalid_arg "traverse" in
-      let rec non_empty : type a f result w .
-        (a Applicative.t, a S.t Applicative.t, f, result, w) Arity.t -> f ->
-          (unit -> result) -> result =
-      fun arity f k ->
-        match arity with
-        | Arity.O -> apply (map cons f) k
-        | Arity.S arity ->
-            fun l ->
-              match S.destruct l with
-              | Nil -> invalid_arg "traverse"
-              | Cons (hd, tl) ->
-                  non_empty arity (f hd) (fun () -> k () tl) in
-      let Arity.S arity' = arity in
-      fun a ->
-      match S.destruct a with
-      | Nil -> empty arity'
-      | Cons (hd, tl) -> non_empty arity' (f hd) (fun () -> traverse arity f tl)
-  end
-end
-
-module List = Sequence (struct
-  type 'a t = 'a list
-
-  type 'a desc =
-    | Nil
-    | Cons of 'a * 'a t
-
-  let destruct l =
-    match l with
-    | [] -> Nil
-    | hd :: tl -> Cons (hd, tl)
-
-  let construct d =
-    match d with
-    | Nil -> []
-    | Cons (hd, tl) -> hd :: tl
-end)
-
-module Seq = Sequence (struct
-  type 'a t = 'a Seq.t
-
-  type 'a desc = 'a Seq.node =
-    | Nil
-    | Cons of 'a * 'a t
-
-  let destruct l = l ()
-
-  let construct d () = d
-end)
+exception StructuralMismatch

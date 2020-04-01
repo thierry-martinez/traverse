@@ -19,6 +19,8 @@ module Monoid : sig
     val ( + ) : t -> t -> t
   end
 
+  module Addition : S
+
   type 'a t = (module S with type t = 'a)
 end
 
@@ -71,40 +73,69 @@ module Applicative : sig
   module List (Base : S) : S with type 'a t = 'a Base.t list
 end
 
-(** Traversal for abstract sequences. *)
-module type SequenceSpecS = sig
-  type 'a t
+type ('a, 'b) length =
+  | Zero : (unit, unit) length
+  | Succ : ('a, 'b) length -> (_ * 'a, _ * 'b) length
 
-  type 'a desc =
-    | Nil
-    | Cons of 'a * 'a t
+module type SequenceOfUnaryTypeS = sig
+  type 'item x
 
-  val destruct : 'a t -> 'a desc
-
-  val construct : 'a desc -> 'a t
+  type 'sequence t =
+    | Unit : unit t
+    | Cons : 'hd x * 'tl t -> ('hd * 'tl) t
 end
 
-module type SequenceS = sig
-  type 'a s
+module rec Sequence : SequenceOfUnaryTypeS with type 'a x = 'a
 
-  module Arity : sig
-    type ('a, 'a_t, 'f, 'result, 'is_empty) t =
-      | O : ('a, 'a_t, 'a, 'a_t, [`Empty]) t
-      | S : ('a, 'a_t, 'f, 'result, _) t ->
-          ('a, 'a_t, 'x -> 'f, 'x s -> 'result, [`Not_empty]) t
-  end
+module type SequenceOfBinaryTypeS = sig
+  type ('a, 'b) x
 
-  module Make (Applicative : Applicative.S) : sig
-    val traverse :
-        ('a Applicative.t, 'a s Applicative.t, 'f, 'result,
-         [`Not_empty]) Arity.t -> 'f -> 'result
-  end
+  type ('a_s, 'b_s) t =
+    | Unit : (unit, unit) t
+    | Cons : ('a, 'b) x * ('a_s, 'b_s) t -> ('a * 'a_s, 'b * 'b_s) t
 end
 
-module Sequence (Spec : SequenceSpecS) : SequenceS with type 'a s = 'a Spec.t
+module Arity : sig
+  module type S = sig
+    type ('a, 'b) t
 
-(** Traversal for lists. *)
-module List : SequenceS with type 'a s = 'a list
+    module ArrowSequence : SequenceOfBinaryTypeS with
+    type ('a, 'b) x = ('a, 'b) t -> 'b
 
-(** Traversal for sequences. *)
-module Seq : SequenceS with type 'a s = 'a Seq.t
+    val destruct :
+        ('a, 'b) length ->
+        ('c -> 'a Sequence.t) ->
+        (('a, 'b) ArrowSequence.t -> 'd) ->
+        ('c, 'd) t
+  end
+
+  module type NonNullS = sig
+    module Pred : S
+
+    include S with type ('a, 'b) t = 'a -> ('a, 'b) Pred.t
+  end
+
+  module O : S with type ('a, 'b) t = 'b
+
+  module S (Pred : S) : NonNullS with module Pred = Pred
+
+  module A1 : NonNullS with type ('a, 'b) Pred.t = ('a, 'b) O.t
+
+  module A2 : NonNullS with type ('a, 'b) Pred.t = ('a, 'b) A1.t
+
+  module A3 : NonNullS with type ('a, 'b) Pred.t = ('a, 'b) A2.t
+
+  module A4 : NonNullS with type ('a, 'b) Pred.t = ('a, 'b) A3.t
+
+  module A5 : NonNullS with type ('a, 'b) Pred.t = ('a, 'b) A4.t
+
+  module A6 : NonNullS with type ('a, 'b) Pred.t = ('a, 'b) A5.t
+
+  module A7 : NonNullS with type ('a, 'b) Pred.t = ('a, 'b) A6.t
+
+  module A8 : NonNullS with type ('a, 'b) Pred.t = ('a, 'b) A7.t
+
+  module A9 : NonNullS with type ('a, 'b) Pred.t = ('a, 'b) A8.t
+end
+
+exception StructuralMismatch

@@ -1,6 +1,6 @@
-module Modules = Traverse_modules
+module Modules = Modules
 
-module Values = Traverse_values
+module Values = Values
 
 include (Modules :
   module type of struct include Modules end with
@@ -16,3 +16,4 @@ module Applicative = struct
   include Values.Applicative
 end
 
+module Primitives = Primitives
