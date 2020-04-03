@@ -81,8 +81,8 @@ module type SequenceOfUnaryTypeS = sig
   type 'item x
 
   type 'sequence t =
-    | Unit : unit t
-    | Cons : 'hd x * 'tl t -> ('hd * 'tl) t
+    | [] : unit t
+    | (::) : 'hd x * 'tl t -> ('hd * 'tl) t
 end
 
 module rec Sequence : SequenceOfUnaryTypeS with type 'a x = 'a
@@ -91,8 +91,8 @@ module type SequenceOfBinaryTypeS = sig
   type ('a, 'b) x
 
   type ('a_s, 'b_s) t =
-    | Unit : (unit, unit) t
-    | Cons : ('a, 'b) x * ('a_s, 'b_s) t -> ('a * 'a_s, 'b * 'b_s) t
+    | [] : (unit, unit) t
+    | (::) : ('a, 'b) x * ('a_s, 'b_s) t -> ('a * 'a_s, 'b * 'b_s) t
 end
 
 module Arity : sig

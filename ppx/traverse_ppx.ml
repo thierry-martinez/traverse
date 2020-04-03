@@ -84,7 +84,7 @@ let traverse_var (name : string) =
   "traverse_'" ^ name
 
 let visit_self name =
-  Ast_helper.Exp.send (Metapp.Exp.var self) (Metapp.mkloc name)
+  Metapp.Exp.send (Metapp.Exp.var self) (Metapp.mkloc name)
 
 let fun_ =
   Ast_helper.Exp.fun_ Nolabel None
@@ -102,18 +102,23 @@ let length_of_list list =
 
 let sequence_of_vars vars =
   List.fold_left
-    (fun accu x -> [%expr Cons ([%e NamedArg.to_exp x], [%e accu])])
-    [%expr Unit] vars
+    (fun accu x -> [%expr [%e NamedArg.to_exp x] :: [%e accu]])
+    [%expr []] vars
 
-let pattern_of_vars vars =
+let pattern_of_vars module_ vars =
   List.fold_left
-    (fun accu x -> [%pat? Cons ([%p NamedArg.to_fpat x], [%p accu])])
-    [%pat? Unit] vars
+    (fun accu x ->
+      Ast_helper.Pat.construct (Metapp.mkloc
+        (Longident.Ldot (Ldot (module_, "ArrowSequence"), "::")))
+        (Some (Ast_helper.Pat.tuple [NamedArg.to_fpat x; accu])))
+    (Ast_helper.Pat.construct (Metapp.mkloc
+        (Longident.Ldot (Ldot (module_, "ArrowSequence"), "[]")))
+       None) vars
 
 let destruct (vars, pat, exp) =
   [%expr Arity.destruct [%e length_of_list vars]
      (fun [%p pat] -> [%e sequence_of_vars vars])
-     (fun [%p pattern_of_vars vars] ->
+     (fun [%p pattern_of_vars (Lident "Arity") vars] ->
        [%e exp])]
 
 let traverse_module_name (type_name : string) : string =
@@ -389,7 +394,7 @@ let add_param_types params ty =
 let annot_method_type params ty exp =
   let visit_type = add_param_types params ty in
   Ast_helper.Exp.poly (abstract_params visit_var params exp)
-    (Some (Ast_helper.Typ.poly (List.map Metapp.mkloc params) visit_type))
+    (Some (Metapp.Typ.poly (List.map Metapp.mkloc params) visit_type))
 
 let visit_case_of_constructor (rec_group : StringSet.t) (type_name : string)
     (params : string list) (constructor : Parsetree.constructor_declaration)
@@ -399,8 +404,9 @@ let visit_case_of_constructor (rec_group : StringSet.t) (type_name : string)
     visit_constructor (Traverse.visit full_apply rec_group) constructor in
   let exp =
     List.fold_right (fun (var : NamedArg.t) e -> [%expr
-        Arity.destruct (Succ Zero) (fun x -> Cons (x, Unit))
-          (function Cons ([%p NamedArg.to_fpat var], Unit) -> [%e e])])
+        Arity.destruct (Succ Zero) (fun x -> [x])
+          (let open Arity.ArrowSequence in
+            function ([[%p NamedArg.to_fpat var]]) -> [%e e])])
       vars exp in
   let constructor_type =
     List.fold_right
@@ -418,7 +424,7 @@ let visit_case_of_constructor (rec_group : StringSet.t) (type_name : string)
       (function
         | [%p pattern] -> [%e sequence_of_vars vars]
         | _ -> raise Traverse.StructuralMismatch)
-      (fun [%p pattern_of_vars vars] ->
+      (fun [%p pattern_of_vars (Ldot (Lident "Arity", "Pred")) vars] ->
         [%e List.fold_left
           (fun accu (var : NamedArg.t) ->
             Metapp.apply (NamedArg.to_fexp var)
@@ -487,7 +493,8 @@ let traverse_case_of_constructor (rec_group : StringSet.t) (type_name : string)
       (function
         | [%p pattern] -> [%e sequence_of_vars vars]
         | _ -> raise Traverse.StructuralMismatch)
-      (fun [%p pattern_of_vars vars] -> [%e exp])] in
+      (fun [%p pattern_of_vars (Ldot (Lident "Arity", "Pred")) vars] ->
+        [%e exp])] in
   Ast_helper.Exp.case pattern exp
 
 let module_binding (item : Parsetree.structure_item)

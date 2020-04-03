@@ -194,8 +194,8 @@ module type SequenceOfUnaryTypeS = sig
   type 'item x
 
   type 'sequence t =
-    | Unit : unit t
-    | Cons : 'hd x * 'tl t -> ('hd * 'tl) t
+    | [] : unit t
+    | (::) : 'hd x * 'tl t -> ('hd * 'tl) t
 end
 
 module rec Sequence : SequenceOfUnaryTypeS with type 'a x = 'a = Sequence
@@ -204,8 +204,8 @@ module type SequenceOfBinaryTypeS = sig
   type ('a, 'b) x
 
   type ('a_s, 'b_s) t =
-    | Unit : (unit, unit) t
-    | Cons : ('a, 'b) x * ('a_s, 'b_s) t -> ('a * 'a_s, 'b * 'b_s) t
+    | [] : (unit, unit) t
+    | (::) : ('a, 'b) x * ('a_s, 'b_s) t -> ('a * 'a_s, 'b * 'b_s) t
 end
 
 module Arity = struct
@@ -238,9 +238,9 @@ module Arity = struct
       type a b . (a, b) length -> (a, b) ArrowSequence.t =
     fun l ->
       match l with
-      | Zero -> Unit
+      | Zero -> []
       | Succ l' ->
-          Cons (Fun.id, id_arrow_sequence l')
+          ArrowSequence.(Fun.id :: id_arrow_sequence l')
 
     let destruct l _p k =
       k (id_arrow_sequence l)
@@ -260,11 +260,17 @@ module Arity = struct
       ((a, b) ArrowSequence.t -> 'c) ->
       (a, b) Pred.ArrowSequence.t -> 'c =
     fun s k a ->
-      match s, a with
-      | Unit, Unit -> k Unit
-      | Cons (hd, tl), Cons (hd', tl') ->
+      let open Sequence in
+      match s with
+      | [] ->
+          let open Pred.ArrowSequence in
+          let [] = a in
+          k []
+      | hd :: tl ->
+          let open Pred.ArrowSequence in
+          let hd' :: tl' = a in
           cons_arrow_sequence tl
-            (fun s -> k (Cons ((fun f -> hd' (f hd)), s))) tl'
+            (fun s -> k ((fun f -> hd' (f hd)) :: s)) tl'
 
     let destruct (l : ('a, 'b) length)
         (p : ('c -> 'a Sequence.t))

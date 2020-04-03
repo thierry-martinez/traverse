@@ -4,20 +4,20 @@ module Atomic (Applicative: Modules.Applicative.S)
     Arity.Pred.destruct Zero
       (fun value ->
         if reference_value = value then
-          Unit
+          []
         else
           raise Modules.StructuralMismatch)
-      (function Unit ->
-        Applicative.pure reference_value)
+      (let open Arity.Pred.ArrowSequence in
+        function [] -> Applicative.pure reference_value)
 end
 
 module Lazy (Applicative: Modules.Applicative.S)
     (Arity : Modules.Arity.NonNullS) = struct
   let traverse traverse_'a =
     Arity.destruct (Succ Zero)
-      (fun (lazy value) -> Cons (value, Unit))
-      (function Cons (fx, Unit) ->
-        Applicative.map Lazy.from_val (fx traverse_'a))
+      (fun (lazy value) -> [value])
+      (let open Arity.ArrowSequence in
+        function [fx] -> Applicative.map Lazy.from_val (fx traverse_'a))
 end
 
 module List (Applicative: Modules.Applicative.S)
@@ -27,19 +27,20 @@ module List (Applicative: Modules.Applicative.S)
     | [] ->
         Arity.Pred.destruct Zero
           (function
-            | [] -> Unit
+            | [] -> []
             | _ :: _ -> raise Modules.StructuralMismatch)
-          (function Unit ->
-            Applicative.pure [])
+          (let open Arity.Pred.ArrowSequence in
+             function [] -> Applicative.pure ([] : 'a list))
     | hd :: tl ->
         Arity.Pred.destruct (Succ (Succ Zero))
           (function
             | [] -> raise Modules.StructuralMismatch
-            | hd :: tl -> Cons (hd, Cons (tl, Unit)))
-          (function Cons (hd', Cons (tl', Unit)) ->
-            Applicative.apply
-              (Applicative.map List.cons (hd' (traverse_'a hd)))
-              (fun () -> (tl' (traverse traverse_'a tl))))
+            | hd :: tl -> [hd; tl])
+          (let open Arity.Pred.ArrowSequence in
+            function [hd'; tl'] ->
+              Applicative.apply
+                (Applicative.map List.cons (hd' (traverse_'a hd)))
+                (fun () -> (tl' (traverse traverse_'a tl))))
 end
 
 module Array (Applicative: Modules.Applicative.S)
@@ -48,9 +49,10 @@ module Array (Applicative: Modules.Applicative.S)
 
   let rec traverse traverse_'a =
     Arity.destruct (Succ Zero)
-      (fun a -> Cons (Array.to_list a, Unit))
-      (function Cons (fx, Unit) ->
-        Applicative.map Array.of_list (fx (List.traverse traverse_'a)))
+      (fun a -> [Array.to_list a])
+      (let open Arity.ArrowSequence in
+        function [fx] ->
+          Applicative.map Array.of_list (fx (List.traverse traverse_'a)))
 end
 
 module Option (Applicative: Modules.Applicative.S)
@@ -60,26 +62,26 @@ module Option (Applicative: Modules.Applicative.S)
     | None ->
         Arity.Pred.destruct Zero
           (function
-            | None -> Unit
+            | None -> []
             | Some _ -> raise Modules.StructuralMismatch)
-          (function Unit ->
-            Applicative.pure None)
+          (let open Arity.Pred.ArrowSequence in
+            function [] -> Applicative.pure None)
     | Some x ->
         Arity.Pred.destruct (Succ Zero)
           (function
             | None -> raise Modules.StructuralMismatch
-            | Some x -> Cons (x, Unit))
-          (function Cons (fx, Unit) ->
-            Applicative.map Option.some (fx (traverse_'a x)))
+            | Some x -> [x])
+          (let open Arity.Pred.ArrowSequence in
+            function [fx] -> Applicative.map Option.some (fx (traverse_'a x)))
 end
 
 module Ref (Applicative: Modules.Applicative.S)
     (Arity : Modules.Arity.NonNullS) = struct
   let rec traverse traverse_'a =
     Arity.destruct (Succ Zero)
-      (fun x -> Cons (!x, Unit))
-      (function Cons (fx, Unit) ->
-        Applicative.map ref (fx traverse_'a))
+      (fun x -> [!x])
+      (let open Arity.ArrowSequence in
+        function [fx] -> Applicative.map ref (fx traverse_'a))
 end
 
 module Result (Applicative: Modules.Applicative.S)
@@ -89,17 +91,17 @@ module Result (Applicative: Modules.Applicative.S)
     | Ok x ->
         Arity.Pred.destruct (Succ Zero)
           (function
-            | Ok x -> Cons (x, Unit)
+            | Ok x -> [x]
             | Error _ -> raise Modules.StructuralMismatch)
-          (function Cons (fx, Unit) ->
-            Applicative.map Result.ok (fx traverse_'a))
+          (let open Arity.Pred.ArrowSequence in
+            function [fx] -> Applicative.map Result.ok (fx traverse_'a))
     | Error x ->
         Arity.Pred.destruct (Succ Zero)
           (function
             | Ok _ -> raise Modules.StructuralMismatch
-            | Error x -> Cons (x, Unit))
-          (function Cons (fx, Unit) ->
-            Applicative.map Result.error (fx traverse_'b))
+            | Error x -> [x])
+          (let open Arity.Pred.ArrowSequence in
+            function [fx] -> Applicative.map Result.error (fx traverse_'b))
 end
 
 module Seq (Applicative: Modules.Applicative.S)
@@ -110,20 +112,21 @@ module Seq (Applicative: Modules.Applicative.S)
         Arity.Pred.destruct Zero
           (function s ->
             match s () with
-            | Seq.Nil -> Unit
+            | Seq.Nil -> []
             | Seq.Cons _ -> raise Modules.StructuralMismatch)
-          (function Unit ->
-            Applicative.pure Seq.empty)
+          (let open Arity.Pred.ArrowSequence in
+            function [] -> Applicative.pure Seq.empty)
     | Seq.Cons (hd, tl) ->
         Arity.Pred.destruct (Succ (Succ Zero))
           (function s ->
             match s () with
             | Seq.Nil -> raise Modules.StructuralMismatch
-            | Seq.Cons (hd, tl) -> Cons (hd, Cons (tl, Unit)))
-          (function Cons (hd', Cons (tl', Unit)) ->
-            Applicative.apply
-              (Applicative.map Seq.cons (hd' (traverse_'a hd)))
-              (fun () -> (tl' (traverse traverse_'a tl))))
+            | Seq.Cons (hd, tl) -> [hd; tl])
+          (let open Arity.Pred.ArrowSequence in
+            function [hd'; tl'] ->
+              Applicative.apply
+                (Applicative.map Seq.cons (hd' (traverse_'a hd)))
+                (fun () -> (tl' (traverse traverse_'a tl))))
 end
 
 module Classes (Applicative: Modules.Applicative.S)
@@ -177,19 +180,20 @@ module Classes (Applicative: Modules.Applicative.S)
         | [] ->
             Arity.Pred.destruct Zero
               (function
-                | [] -> Unit
+                | [] -> []
                 | _ :: _ -> raise Modules.StructuralMismatch)
-              (function Unit ->
-                Applicative.pure [])
+              (let open Arity.Pred.ArrowSequence in
+                function [] -> Applicative.pure (let open Stdlib.List in []))
         | hd :: tl ->
             Arity.Pred.destruct (Succ (Succ Zero))
               (function
                 | [] -> raise Modules.StructuralMismatch
-                | hd :: tl -> Cons (hd, Cons (tl, Unit)))
-              (function Cons (hd', Cons (tl', Unit)) ->
-                Applicative.apply
-                  (Applicative.map Stdlib.List.cons (hd' (visit_'a hd)))
-                  (fun () -> (tl' (self#visit_list visit_'a tl))))
+                | hd :: tl -> [hd; tl])
+              (let open Arity.Pred.ArrowSequence in
+                function [hd'; tl'] ->
+                  Applicative.apply
+                    (Applicative.map Stdlib.List.cons (hd' (visit_'a hd)))
+                    (fun () -> (tl' (self#visit_list visit_'a tl))))
 
       method visit_nativeint : (nativeint, nativeint Applicative.t) Arity.t =
         let module Traverse = Atomic (Applicative) (Arity) in
@@ -222,20 +226,21 @@ module Classes (Applicative: Modules.Applicative.S)
             Arity.Pred.destruct Zero
               (function s ->
                 match s () with
-                | Stdlib.Seq.Nil -> Unit
+                | Stdlib.Seq.Nil -> []
                 | Stdlib.Seq.Cons _ -> raise Modules.StructuralMismatch)
-              (function Unit ->
-                Applicative.pure Stdlib.Seq.empty)
+              (let open Arity.Pred.ArrowSequence in
+                function [] -> Applicative.pure Stdlib.Seq.empty)
         | Stdlib.Seq.Cons (hd, tl) ->
             Arity.Pred.destruct (Succ (Succ Zero))
               (function s ->
                 match s () with
                 | Stdlib.Seq.Nil -> raise Modules.StructuralMismatch
-                | Stdlib.Seq.Cons (hd, tl) -> Cons (hd, Cons (tl, Unit)))
-              (function Cons (hd', Cons (tl', Unit)) ->
-                Applicative.apply
-                  (Applicative.map Stdlib.Seq.cons (hd' (visit_'a hd)))
-                  (fun () -> (tl' (self#visit_seq visit_'a tl))))
+                | Stdlib.Seq.Cons (hd, tl) -> [hd; tl])
+              (let open Arity.Pred.ArrowSequence in
+                function [hd'; tl'] ->
+                  Applicative.apply
+                    (Applicative.map Stdlib.Seq.cons (hd' (visit_'a hd)))
+                    (fun () -> (tl' (self#visit_seq visit_'a tl))))
 
       method visit_string : (string, string Applicative.t) Arity.t =
         let module Traverse = Atomic (Applicative) (Arity) in
