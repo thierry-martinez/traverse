@@ -104,6 +104,10 @@ module Result (Applicative: Modules.Applicative.S)
             function [fx] -> Applicative.map Result.error (fx traverse_'b))
 end
 
+(* Will become Seq.cons in OCaml 4.11.0 *)
+let seq_cons (x : 'a) (seq : 'a Seq.t) : 'a Seq.t = fun () ->
+  Cons (x, seq)
+
 module Seq (Applicative: Modules.Applicative.S)
     (Arity : Modules.Arity.NonNullS) = struct
   let rec traverse traverse_'a s =
@@ -125,7 +129,7 @@ module Seq (Applicative: Modules.Applicative.S)
           (let open Arity.Pred.ArrowSequence in
             function [hd'; tl'] ->
               Applicative.apply
-                (Applicative.map Seq.cons (hd' (traverse_'a hd)))
+                (Applicative.map seq_cons (hd' (traverse_'a hd)))
                 (fun () -> (tl' (traverse traverse_'a tl))))
 end
 
@@ -239,7 +243,7 @@ module Classes (Applicative: Modules.Applicative.S)
               (let open Arity.Pred.ArrowSequence in
                 function [hd'; tl'] ->
                   Applicative.apply
-                    (Applicative.map Stdlib.Seq.cons (hd' (visit_'a hd)))
+                    (Applicative.map seq_cons (hd' (visit_'a hd)))
                     (fun () -> (tl' (self#visit_seq visit_'a tl))))
 
       method visit_string : (string, string Applicative.t) Arity.t =
