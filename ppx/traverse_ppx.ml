@@ -575,11 +575,17 @@ let module_binding (item : Parsetree.structure_item)
     | Pstr_module binding -> binding
     | _ -> assert false
 
+let stropt_of_string (s : string) =
+  [%meta if Sys.ocaml_version < "4.10.0" then
+    [%expr s]
+  else
+    [%expr Some s]]
+
 let set_module_name name (item : Parsetree.structure_item)
     : Parsetree.structure_item =
   match item.pstr_desc with
     | Pstr_module binding ->
-        let pmb_name = { binding.pmb_name with txt = Some name } in
+        let pmb_name = { binding.pmb_name with txt = stropt_of_string name } in
         let binding = { binding with pmb_name } in
         { item with pstr_desc = Pstr_module binding }
     | _ -> assert false
@@ -638,7 +644,7 @@ let traverse_module_of_type_declaration (rec_group : StringSet.t)
         val traverse : [%t traverse_type]
       end = struct
         let rec traverse :
-          [%t Ast_helper.Typ.poly (List.map Metapp.mkloc (result :: ai @ fi))
+          [%t Metapp.Typ.poly (List.map Metapp.mkloc (result :: ai @ fi))
             traverse_type]
         = fun arity ->
  [%e traverse_expr]

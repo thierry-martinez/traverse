@@ -11,8 +11,8 @@ module Atomic = struct
       a -> (a, a Applicative.t, result, is_empty) Arity.t -> result =
     fun reference_value arity ->
       match arity with
-      | O -> Applicative.pure reference_value
-      | S arity ->
+      | Arity.O -> Applicative.pure reference_value
+      | Arity.S arity ->
           function value ->
             if value = reference_value then
               traverse_aux reference_value arity
@@ -20,7 +20,7 @@ module Atomic = struct
               raise Modules.StructuralMismatch
 
     let traverse (arity : ('a, 'a_t, 'result, [`Not_empty]) Arity.t) value =
-      let S arity = arity in
+      let Arity.S arity = arity in
       traverse_aux value arity
   end
 end
@@ -45,8 +45,8 @@ module Lazy = struct
         f -> result =
     fun arity f ->
       match arity with
-      | O -> Applicative.map Lazy.from_val f
-      | S arity ->
+      | Arity.O -> Applicative.map Lazy.from_val f
+      | Arity.S arity ->
           function (lazy x) ->
             traverse arity (f x)
   end
@@ -61,8 +61,8 @@ module List = struct
         result =
     fun arity ->
       match arity with
-      | O -> Applicative.pure []
-      | S arity ->
+      | Arity.O -> Applicative.pure []
+      | Arity.S arity ->
           function
             | [] -> traverse_nil arity
             | _ :: _ -> raise Modules.StructuralMismatch
@@ -72,9 +72,9 @@ module List = struct
         f -> (unit -> result) -> result =
     fun arity traverse_'a traverse_tl ->
       match arity with
-      | O ->
+      | Arity.O ->
           Applicative.apply (Applicative.map List.cons traverse_'a) traverse_tl
-      | S arity ->
+      | Arity.S arity ->
           function
             | [] -> raise Modules.StructuralMismatch
             | hd :: tl ->
@@ -85,7 +85,7 @@ module List = struct
           (a Applicative.t, a List.t Applicative.t, f, result, [`Not_empty])
           Arity.t -> f -> result =
     fun arity traverse_'a ->
-      let S arity' = arity in
+      let Arity.S arity' = arity in
       function
       | [] -> traverse_nil arity'
       | hd :: tl ->
@@ -114,12 +114,12 @@ module Array = struct
       (a, is_empty, f, array_result) traverse_aux =
     fun arity ->
       match arity with
-      | O ->
+      | Arity.O ->
           Traverse_aux {
             list_arity = O;
             apply_arguments = fun f -> Applicative.map Array.of_list f;
           }
-      | S arity ->
+      | Arity.S arity ->
           let Traverse_aux { list_arity; apply_arguments } =
             traverse_aux arity in
           Traverse_aux {
@@ -143,8 +143,8 @@ module Option = struct
         Arity.t -> result =
     fun arity ->
       match arity with
-      | O -> Applicative.pure None
-      | S arity ->
+      | Arity.O -> Applicative.pure None
+      | Arity.S arity ->
           function
             | None -> traverse_none arity
             | Some _ -> raise Modules.StructuralMismatch
@@ -154,8 +154,8 @@ module Option = struct
         Arity.t -> f -> result =
     fun arity traverse_'a ->
       match arity with
-      | O -> Applicative.map Option.some traverse_'a
-      | S arity ->
+      | Arity.O -> Applicative.map Option.some traverse_'a
+      | Arity.S arity ->
           function
             | None -> raise Modules.StructuralMismatch
             | Some x -> traverse_some arity (traverse_'a x)
@@ -164,7 +164,7 @@ module Option = struct
           (a Applicative.t, a Option.t Applicative.t, f, result, [`Not_empty])
             Arity.t -> f -> result =
     fun arity traverse_'a ->
-      let S arity' = arity in
+      let Arity.S arity' = arity in
       function
       | None -> traverse_none arity'
       | Some x -> traverse_some arity' (traverse_'a x)
@@ -181,8 +181,8 @@ module Ref (Applicative: Modules.Applicative.S)
         f -> result =
     fun arity f ->
       match arity with
-      | O -> Applicative.map ref f
-      | S arity ->
+      | Arity.O -> Applicative.map ref f
+      | Arity.S arity ->
           function x ->
             traverse arity (f !x)
   end
@@ -210,8 +210,8 @@ module Result (Applicative: Modules.Applicative.S)
         result, is_empty) Arity.t -> f -> result =
     fun arity traverse_'a ->
       match arity with
-      | O -> Applicative.map Result.ok traverse_'a
-      | S arity ->
+      | Arity.O -> Applicative.map Result.ok traverse_'a
+      | Arity.S arity ->
           function
             | Ok x -> traverse_ok arity (traverse_'a x)
             | Error _ -> raise Modules.StructuralMismatch
@@ -221,8 +221,8 @@ module Result (Applicative: Modules.Applicative.S)
         result, is_empty) Arity.t -> g -> result =
     fun arity traverse_'b ->
       match arity with
-      | O -> Applicative.map Result.error traverse_'b
-      | S arity ->
+      | Arity.O -> Applicative.map Result.error traverse_'b
+      | Arity.S arity ->
           function
             | Ok _ -> raise Modules.StructuralMismatch
             | Error x -> traverse_error arity (traverse_'b x)
@@ -231,7 +231,7 @@ module Result (Applicative: Modules.Applicative.S)
       (a Applicative.t, b Applicative.t, (a, b) Result.t Applicative.t, f, g,
         result, [`Not_empty]) Arity.t -> f -> g -> result =
     fun arity traverse_'a traverse_'b ->
-      let S arity' = arity in
+      let Arity.S arity' = arity in
       function
       | Ok x -> traverse_ok arity' (traverse_'a x)
       | Error x -> traverse_error arity' (traverse_'b x)
@@ -251,8 +251,8 @@ module Seq = struct
         result =
     fun arity ->
       match arity with
-      | O -> Applicative.pure Seq.empty
-      | S arity ->
+      | Arity.O -> Applicative.pure Seq.empty
+      | Arity.S arity ->
           function s ->
             match s () with
             | Nil -> traverse_nil arity
@@ -263,10 +263,10 @@ module Seq = struct
         f -> (unit -> result) -> result =
     fun arity traverse_'a traverse_tl ->
       match arity with
-      | O ->
+      | Arity.O ->
           Applicative.apply (Applicative.map seq_cons traverse_'a)
             traverse_tl
-      | S arity ->
+      | Arity.S arity ->
           function s ->
             match s () with
             | Nil -> raise Modules.StructuralMismatch
@@ -278,7 +278,7 @@ module Seq = struct
       (a Applicative.t, a Seq.t Applicative.t, f, result, [`Not_empty])
         Arity.t -> f -> result =
     fun arity traverse_'a ->
-      let S arity' = arity in
+      let Arity.S arity' = arity in
       function s ->
         match s () with
         | Nil -> traverse_nil arity'
