@@ -7,6 +7,7 @@ and v =
     { x : t; y : v u }
       [@@deriving traverse]
 
+(*
 module Accu = struct
   type t = int list ref
 end
@@ -61,3 +62,4 @@ let () =
   let map2 = new test_map2 in
   let u = map2#visit_u map2#visit_int u1 u2 in
   assert (u = B { left = (5, 7); right = 9 })
+*)
