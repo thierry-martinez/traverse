@@ -1,6 +1,4 @@
-# 2020-04-03, 0.2.0
-
-- traverse.ppx: traverse ppx extension for deriving visitors
+# 2020-05-04, 0.1.1
 
 - Fix: Traverse.Applicative.Iter now does something
 
