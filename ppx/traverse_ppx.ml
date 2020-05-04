@@ -1,6 +1,3 @@
-let mklid (ident : Longident.t) : Ast_helper.lid =
-  Metapp.mkloc ident
-
 let type_name_of_ident (ident : Longident.t) : string =
   let buffer = Buffer.create 16 in
   let rec aux (ident : Longident.t) =
@@ -108,11 +105,11 @@ let sequence_of_vars vars =
 let pattern_of_vars module_ vars =
   List.fold_left
     (fun accu x ->
-      Ast_helper.Pat.construct
-        (mklid (Ldot (Ldot (module_, "ArrowSequence"), "::")))
-        (Some (Ast_helper.Pat.tuple [NamedArg.to_fpat x; accu])))
+       Ast_helper.Pat.construct
+         (Metapp.mkloc (Metapp.concat_ident module_ [%lid ArrowSequence.(::)]))
+         (Some (Ast_helper.Pat.tuple [NamedArg.to_fpat x; accu])))
     (Ast_helper.Pat.construct
-       (mklid (Ldot (Ldot (module_, "ArrowSequence"), "[]")))
+       (Metapp.mkloc (Metapp.concat_ident module_ [%lid ArrowSequence.([])]))
        None) vars
 
 let destruct (vars, pat, exp) =
@@ -327,7 +324,9 @@ module Traverse = struct
         match name with
         | Lident name when StringSet.mem name rec_group ->
             Ast_helper.Exp.ident
-              (mklid (Ldot (Lident (traverse_module_name name), "traverse")))
+              (Metapp.mkloc
+                (Metapp.make_ident ~prefix:(Lident (traverse_module_name name))
+                  "traverse"))
         | _ ->
             let module_name : Longident.t =
               match builtin_type_of_ident name with
@@ -398,7 +397,7 @@ let visit_record
   let fields =
     List.map
       (fun (name : NamedArg.t) ->
-        (mklid (Lident name.var.x), NamedArg.to_exp name))
+        (Metapp.mkloc (Metapp.make_ident name.var.x), NamedArg.to_exp name))
       label_names in
   let construct =
     List.fold_right fun_ var_pat (construct fields) in
@@ -412,7 +411,7 @@ let visit_constructor
     (traverse : Traverse.t)
     (constructor : Parsetree.constructor_declaration)
     : NamedArg.t list * Parsetree.pattern * Parsetree.expression =
-  let lid = mklid (Lident constructor.pcd_name.txt) in
+  let lid = Metapp.mkloc (Metapp.make_ident constructor.pcd_name.txt) in
   let pat_construct = Ast_helper.Pat.construct lid in
   let exp_construct = Ast_helper.Exp.construct lid in
   match constructor.pcd_args with
@@ -454,7 +453,7 @@ let arity_app t =
 
 let type_constr (type_name : string) (params : string list)
     : Parsetree.core_type =
-  Ast_helper.Typ.constr (mklid (Lident type_name))
+  Ast_helper.Typ.constr (Metapp.mkloc (Metapp.make_ident type_name))
     (List.map Ast_helper.Typ.var params)
 
 let add_param_type param accu =
@@ -575,17 +574,12 @@ let module_binding (item : Parsetree.structure_item)
     | Pstr_module binding -> binding
     | _ -> assert false
 
-let stropt_of_string (s : string) =
-  [%meta if Sys.ocaml_version < "4.10.0" then
-    [%expr s]
-  else
-    [%expr Some s]]
-
 let set_module_name name (item : Parsetree.structure_item)
     : Parsetree.structure_item =
   match item.pstr_desc with
     | Pstr_module binding ->
-        let pmb_name = { binding.pmb_name with txt = stropt_of_string name } in
+        let pmb_name = { binding.pmb_name with
+          txt = Metapp.module_name_of_string_option (Some name) } in
         let binding = { binding with pmb_name } in
         { item with pstr_desc = Pstr_module binding }
     | _ -> assert false
@@ -632,9 +626,10 @@ let traverse_module_of_type_declaration (rec_group : StringSet.t)
   let vfi = List.map Ast_helper.Typ.var fi in
   let traverse_type =
     Ast_helper.Typ.constr
-      (mklid (Ldot (Lident (arity_module_name type_name), "t")))
+      (Metapp.mkloc (Metapp.make_ident
+         ~prefix:(Lident (arity_module_name type_name)) "t"))
       (List.map (fun s -> app_t (Ast_helper.Typ.var s)) ai @
-      [app_t (Ast_helper.Typ.constr (mklid (Lident type_name))
+      [app_t (Ast_helper.Typ.constr (Metapp.mkloc (Metapp.make_ident type_name))
         (List.map Ast_helper.Typ.var ai))] @ vfi @ [result_var] @
       [[%type: [`Not_empty]]]) -->
     (List.fold_right (-->) vfi result_var) in
@@ -643,6 +638,8 @@ let traverse_module_of_type_declaration (rec_group : StringSet.t)
     [%stri module Traverse : sig
         val traverse : [%t traverse_type]
       end = struct
+        type t
+
         let rec traverse :
           [%t Metapp.Typ.poly (List.map Metapp.mkloc (result :: ai @ fi))
             traverse_type]
@@ -684,11 +681,11 @@ let arities_of_type_declaration
   let fi = init_var_list (Printf.sprintf "f%d") in
   let xi = init_var_list (Printf.sprintf "x%d") in
   let arity_t = "arity_t" in
-  let arity_t_lid = mklid (Lident arity_t) in
+  let arity_t_lid = Metapp.mkloc (Metapp.make_ident arity_t) in
   let arity_t_var = Ast_helper.Typ.var arity_t in
   let result_var = Ast_helper.Typ.var "result" in
   let t_to_result = [%type:
-    [%t Ast_helper.Typ.constr (mklid (Lident type_name)) xi] ->
+    [%t Ast_helper.Typ.constr (Metapp.mkloc (Metapp.make_ident type_name)) xi] ->
       [%t result_var]] in
   let xi_to_fi = List.map2 (fun xi fi -> [%type: [%t xi] -> [%t fi]]) xi fi in
   let zero_type =
@@ -725,8 +722,7 @@ let make_str ~loc ((rec_flag : Asttypes.rec_flag), type_declarations)
       type_declarations in
   let fields =
     Ast_helper.Cf.inherit_ Fresh
-      (Ast_helper.Cl.constr
-        (mklid (Ldot (Lident "Primitives", "traverse")))
+      (Ast_helper.Cl.constr (Metapp.mkloc [%lid Primitives.traverse])
         [Ast_helper.Typ.any ()]) None :: fields in
   let class_name = "traverse" in
   let class_declaration =
@@ -767,18 +763,21 @@ let make_str ~loc ((rec_flag : Asttypes.rec_flag), type_declarations)
       let module_item = [%stri
         module Traverse_t = struct
           module Group =
-            [%m Ast_helper.Mod.ident (mklid (Lident group_module_name))]
+            [%m Ast_helper.Mod.ident (Metapp.mkloc
+                (Metapp.make_ident group_module_name))]
               (Applicative)
 
           module Arity =
             [%m Ast_helper.Mod.ident
-              (mklid (Ldot (Lident "Group", arity_module_name)))]
+              (Metapp.mkloc (Metapp.make_ident ~prefix:(Lident "Group")
+                arity_module_name))]
 
           module Make (Applicative : Traverse.Applicative.S) = struct
             module Group = Group.Make (Applicative)
 
             include [%m Ast_helper.Mod.ident
-              (mklid (Ldot (Lident "Group", module_name)))]
+              (Metapp.mkloc (Metapp.make_ident ~prefix:(Lident "Group")
+                module_name))]
 
             module Class = Group.Class
           end
