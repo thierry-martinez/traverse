@@ -1,6 +1,6 @@
-# 2020-05-04, 0.1.1
+# 2020-05-11, 0.2.0
 
-- Fix: Traverse.Applicative.Iter now does something
+- Fix: `Traverse.Applicative.Iter` now does something
 
 - Primitive traversers are now defined in Traverse.Primitives
 
