@@ -22,4 +22,5 @@
   (dune (>= 1.10.0))
   (stdcompat (>= 14))
   (metapp (>= 0.2.0))
-  (metaquot (>= 0.2.0))))
+  (metaquot (>= 0.2.0))
+  (odoc (and :with-doc (>= 1.5.1)))))
