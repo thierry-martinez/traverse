@@ -1,6 +1,6 @@
 [%%metapackage metapp]
 [%%metadir "traverse_meta/.traverse_meta.objs/byte/"]
-[%%metaflag "-open", "Stdcompat"]
+[%%metaflag "-open", "Stdcompat", "-dsource"]
 
 module Applicative = struct
   include Interface
@@ -20,15 +20,15 @@ module Applicative = struct
                   let ti = Traverse_meta.ti i in
                   let ti_t = Traverse_meta.ti_t i in
                   Metapp.Stri.of_list [
-                    Ast_helper.Str.type_ Nonrecursive
-                      [Ast_helper.Type.mk (Metapp.mkloc ti)
+                    Ppxlib.Ast_helper.Str.type_ Nonrecursive
+                      [Ppxlib.Ast_helper.Type.mk (Metapp.mkloc ti)
                         ~manifest:(Traverse_meta.type_of_string ti);
-                        Ast_helper.Type.mk (Metapp.mkloc ti_t)
+                        Ppxlib.Ast_helper.Type.mk (Metapp.mkloc ti_t)
                         ~manifest:
                           [%type: [%meta Traverse_meta.type_of_string ti]
                           Applicative.t]];
-                    Ast_helper.Str.value Nonrecursive
-                      [Ast_helper.Vb.mk
+                    Ppxlib.Ast_helper.Str.value Nonrecursive
+                      [Ppxlib.Ast_helper.Vb.mk
                         [%pat? ([%meta Metapp.Pat.var (Traverse_meta.eqi i)] :
                           ([%meta Traverse_meta.type_of_string ti]
                           Applicative.t,
@@ -59,11 +59,11 @@ module Applicative = struct
         (Traverse_meta.type_of_string (Traverse_meta.ti i),
           Traverse_meta.type_of_string (tim i)))]) ->
         let A m = m () in
-        [%meta Ast_helper.Exp.letmodule
-          (Metapp.mkloc (Traverse_meta.module_name_of_string modname))
-          (Ast_helper.Mod.unpack [%expr m])
+        [%meta Ppxlib.Ast_helper.Exp.letmodule
+          (Metapp.mkloc (Metapp.module_name_of_string_option (Some modname)))
+          (Ppxlib.Ast_helper.Mod.unpack [%expr m])
           (Traverse_meta.compose (fun i acc ->
-            [%expr let Eq = [%meta Ast_helper.Exp.ident (Metapp.mkloc
+            [%expr let Eq = [%meta Ppxlib.Ast_helper.Exp.ident (Metapp.mkloc
               (Longident.Ldot (Lident modname, Traverse_meta.eqi i)))] in
               [%meta acc]])
               (k tim))]]]

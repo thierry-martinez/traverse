@@ -10,6 +10,7 @@
 (homepage "https://github.com/thierry-martinez/traverse")
 (bug_reports "https://github.com/thierry-martinez/traverse")
 (documentation "https://github.com/thierry-martinez/traverse")
+(version "0.3.0")
 
 (package
  (name traverse)
@@ -21,6 +22,6 @@
   (ocaml (and (>= 4.03.0) (< 4.12.0)))
   (dune (>= 1.10.0))
   (stdcompat (>= 14))
-  (metapp (>= 0.2.0))
-  (metaquot (>= 0.2.0))
+  (metapp (>= 0.3.0))
+  (metaquot (>= 0.3.0))
   (odoc (and :with-doc (>= 1.5.1)))))

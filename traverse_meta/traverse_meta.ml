@@ -14,13 +14,13 @@ let compose f unit =
   compose_n variable_count f unit
 
 let type_of_string s =
-  Ast_helper.Typ.constr (mklid s) []
+  Ppxlib.Ast_helper.Typ.constr (mklid s) []
 
 let mk_t f =
-  Ast_helper.Typ.constr (mklid "t")
+  Ppxlib.Ast_helper.Typ.constr (mklid "t")
     [compose (fun i acc ->
       let ti, ti_t = f i in
-      Ast_helper.Typ.tuple [ti; ti_t; acc])
+      Ppxlib.Ast_helper.Typ.tuple [ti; ti_t; acc])
       (type_of_string "unit")]
 
 let newtypes f expr =
@@ -32,9 +32,3 @@ let ti i = Printf.sprintf "t%d" i
 let ti_t i = Printf.sprintf "t%d_t" i
 
 let eqi i = Printf.sprintf "eq%d" i
-
-let module_name_of_string name =
-  [%meta if Sys.ocaml_version >= "4.10.0" then
-    [%e Some name]
-  else
-    [%e name]]

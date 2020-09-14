@@ -13,27 +13,27 @@ module type MonomorphicS = sig
       let ti = Traverse_meta.ti i in
       let ti_t = Traverse_meta.ti_t i in
       Metapp.Sigi.of_list [
-        Ast_helper.Sig.type_ Recursive
-          [Ast_helper.Type.mk (Metapp.mkloc ti);
-            Ast_helper.Type.mk (Metapp.mkloc ti_t)];
-        Ast_helper.Sig.value
-          (Ast_helper.Val.mk (Metapp.mkloc (Printf.sprintf "eq%d" i))
+        Ppxlib.Ast_helper.Sig.type_ Recursive
+          [Ppxlib.Ast_helper.Type.mk (Metapp.mkloc ti);
+            Ppxlib.Ast_helper.Type.mk (Metapp.mkloc ti_t)];
+        Ppxlib.Ast_helper.Sig.value
+          (Ppxlib.Ast_helper.Val.mk (Metapp.mkloc (Printf.sprintf "eq%d" i))
             [%t: ([%meta Traverse_meta.type_of_string ti] Applicative.t,
               [%meta Traverse_meta.type_of_string ti_t]) eq])]))]
 end
 
 type 'a desc =
   | A :
-      [%meta Ast_helper.Typ.package
+      [%meta Ppxlib.Ast_helper.Typ.package
         (Metapp.mkloc (Longident.Lident "MonomorphicS"))
         (List.flatten (List.init Traverse_meta.variable_count (fun i ->
           let ti = Traverse_meta.ti i in
           let ti_t = Traverse_meta.ti_t i in
-          [(Traverse_meta.mklid ti, Ast_helper.Typ.var ti);
-            (Traverse_meta.mklid ti_t, Ast_helper.Typ.var ti_t)])))] ->
+          [(Traverse_meta.mklid ti, Ppxlib.Ast_helper.Typ.var ti);
+            (Traverse_meta.mklid ti_t, Ppxlib.Ast_helper.Typ.var ti_t)])))] ->
       [%meta Traverse_meta.compose (fun i acc ->
-        [%type: [%meta Ast_helper.Typ.var (Traverse_meta.ti i)] *
-          [%meta Ast_helper.Typ.var (Traverse_meta.ti_t i)] *
+        [%type: [%meta Ppxlib.Ast_helper.Typ.var (Traverse_meta.ti i)] *
+          [%meta Ppxlib.Ast_helper.Typ.var (Traverse_meta.ti_t i)] *
           [%meta acc]]) [%t: unit]] desc
 
 (** ['a t] {!type:Applicative.t} is a first-class representation for applicative
@@ -45,6 +45,6 @@ module type InstanceS = sig
 
   val instance :
     [%meta Traverse_meta.mk_t (fun i ->
-      Ast_helper.Typ.var (Traverse_meta.ti i),
-      [%type: [%meta Ast_helper.Typ.var (Traverse_meta.ti i)] Applicative.t])]
+      Ppxlib.Ast_helper.Typ.var (Traverse_meta.ti i),
+      [%type: [%meta Ppxlib.Ast_helper.Typ.var (Traverse_meta.ti i)] Applicative.t])]
 end

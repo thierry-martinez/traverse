@@ -1,4 +1,8 @@
-# 2020-05-11, 0.2.0
+# Version 0.3.0, in development
+
+- Port to ppxlib 0.16 / ocaml-migrate-parsetree 2.0.0
+
+# Version 0.2.0, 2020-05-11
 
 - Support for OCaml 4.11.0
 
@@ -6,6 +10,6 @@
 
 - Primitive traversers are now defined in `Traverse.Primitives`
 
-# 2020-03-08, 0.1.0
+# Version 0.1.0, 2020-03-08
 
 - First release
