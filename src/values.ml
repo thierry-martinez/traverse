@@ -1,6 +1,6 @@
 [%%metapackage metapp]
 [%%metadir "traverse_meta/.traverse_meta.objs/byte/"]
-[%%metaflag "-open", "Stdcompat", "-dsource"]
+[%%metaflag "-open", "Stdcompat"]
 
 module Applicative = struct
   include Interface
