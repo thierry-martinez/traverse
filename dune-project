@@ -20,7 +20,7 @@
     data structures")
  (depends
   (ocaml (and (>= 4.08.0) (< 4.12.0)))
-  (dune (>= 1.10.0))
+  (dune (>= 1.11.0))
   (stdcompat (>= 14))
   (metapp (>= 0.3.0))
   (metaquot (>= 0.3.0))
